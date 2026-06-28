@@ -30,7 +30,7 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      - postgres
+      - postgres_red
 
 volumes:
   pgadmin_data:

@@ -1,31 +1,23 @@
 # === base ===
 FROM python:3.13-slim AS base
 
-RUN apt-get update && apt-get upgrade -y \
-    && apt-get install -y \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 RUN pip install uv
-COPY pyproject.toml .
+COPY pyproject.toml uv.lock ./
 
 # === dev ===
 FROM base AS dev
 
 # installs prod + dev (pytest, debugpy, ruff, playwright)
-RUN uv sync
-
-# dependencies for playwright
-RUN apt-get update && apt-get install -y \
-    && rm -rf /var/lib/apt/lists/*
+RUN uv sync --frozen
 
 # installs playwright
-RUN uv run playwright install chromium
+RUN uv run playwright install --with-deps chromium
 
 COPY . .
 
 # === prod ===
 FROM base AS prod
 
-RUN uv sync --no-dev
+RUN uv sync --frozen --no-dev
 COPY . .
