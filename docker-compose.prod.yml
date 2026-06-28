@@ -3,11 +3,21 @@ services:
     build:
       context: .
       target: prod
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     restart: always
     command: >
       uv run uvicorn app.main:app
       --host 0.0.0.0
       --port 8000
       --workers 4
+  
+  nginx:
+    image: nginx:1.30.3-alpine
+    volumes:
+      - ./nginx/conf.d/app.http.conf:/etc/nginx/conf.d/app.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - app
