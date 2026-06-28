@@ -13,7 +13,7 @@ services:
       - postgres_red_data:/var/lib/postgresql/data
 
 
-  app:
+  elredactor:
     env_file:
       - .env
     depends_on:

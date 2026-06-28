@@ -4,7 +4,7 @@
 COMPOSE_BASE = docker compose -f docker-compose.yml
 COMPOSE_DEV  = $(COMPOSE_BASE) -f docker-compose.dev.yml
 COMPOSE_PROD = $(COMPOSE_BASE) -f docker-compose.prod.yml
-APP          = app
+APP          = elredactor
 
 # ============================================================
 # Help (default)
@@ -66,7 +66,7 @@ logs:
 	$(COMPOSE_DEV) logs -f $(APP)
 
 logs-db:
-	$(COMPOSE_DEV) logs -f postgres
+	$(COMPOSE_DEV) logs -f postgres_red
 
 shell:
 	$(COMPOSE_DEV) exec $(APP) bash
@@ -117,7 +117,7 @@ migrate-history:
 	$(COMPOSE_DEV) exec $(APP) uv run alembic history
 
 db-shell:
-	$(COMPOSE_DEV) exec postgres psql -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+	$(COMPOSE_DEV) exec postgres_red psql -U $${POSTGRES_USER} -d $${POSTGRES_DB}
 
 # ============================================================
 # Production

@@ -4,7 +4,7 @@
     "../docker-compose.yml",
     "../docker-compose.dev.yml"
   ],
-  "service": "app",
+  "service": "elredactor",
   "workspaceFolder": "/app",
   "customizations": {
     "vscode": {
