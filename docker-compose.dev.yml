@@ -18,6 +18,16 @@ services:
       --port 8000
       --reload
 
+  postgres_red:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  qdrant:
+    ports:
+      - "${QDRANT_SERVICE_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_SERVICE_GRPC_PORT:-6334}:6334"
+
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin
