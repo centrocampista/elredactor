@@ -1,0 +1,36 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    environment:
+      - UV_LINK_MODE=copy
+    volumes:
+      - .:/app
+      - /app/.venv # Container deps hot reload lock
+      - ./content:/content
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    command: >
+      uv run uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+volumes:
+  pgadmin_data:
