@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import FastAPI
 
 from app.api.v1.routers import documents
@@ -15,7 +17,7 @@ app.include_router(documents.router, prefix='/v1/documents')
 
 @app.get('/health')
 async def health() -> dict:
-    response = {'status':'ok'}
+    response: dict[str, Any]= {'status':'ok'}
     if settings.is_dev:
         response['environment'] = settings.environment
         response['debug'] = settings.debug
