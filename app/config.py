@@ -22,14 +22,14 @@ class Settings(BaseSettings):
 
     @property
     def is_dev(self) -> bool:
-        self.environment == "development"
+        return self.environment == "development"
     
     @property
     def is_staging(self) -> bool:
-        self.environment == "staging"
+        return self.environment == "staging"
     
     @property
     def is_prod(self) -> bool:
-        self.environment == "development"
+        return self.environment == "production"
         
 settings = Settings()
