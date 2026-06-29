@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  
+permissions:
+  issues: write
+  contents: read
 
 env:
   PYTHON_VERSION: "3.12"
@@ -173,3 +177,32 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ─────────────────────────────────────────────
+  # Create issue on CI failure
+  # ─────────────────────────────────────────────
+  report-failure:
+    name: Report CI failure
+    needs: [lint, typecheck, test-unit, test-integration, docker-build]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create issue on CI failure
+        uses: dacbd/create-issue-action@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "CI failed — ${{ github.ref_name }} #${{ github.run_number }}"
+          body: |
+            ## CI Failure
+
+            | | |
+            |---|---|
+            | **Branch** | `${{ github.ref_name }}` |
+            | **Commit** | `${{ github.sha }}` |
+            | **Triggered by** | @${{ github.actor }} |
+            | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+            Check which jobs failed and fix the errors.
+          labels: "ci-failure,bug"
