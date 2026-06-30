@@ -1,33 +1,23 @@
 
-from typing import NamedTuple
-from unittest.mock import patch
+from typing import Any, NamedTuple
 
 import pytest
 
-from tests.integration.conftest import SettingsMock
-
 class ExpextedResponse(NamedTuple):
-    status: str
-    debug: bool | None
-    environment: bool | None
+    status_code: int
+    body: dict[str, Any]
 
 @pytest.mark.parametrize(
-    'case_setings, expected_response',
+    'expected_response',
     [
-        ( SettingsMock(environment='development',
-            is_dev=True, is_staging=False, is_prod=False, debug=True),
-            ExpextedResponse(status='ok', environment='development', debug=True)
-            ),
-        ( SettingsMock(environment='staging',
-            is_dev=False, is_staging=True, is_prod=False, debug=False),
-            ExpextedResponse(status='ok')
-            ),
-        ( SettingsMock(environment='production',
-            is_dev=False, is_staging=False, is_prod=True, debug=False),
-            ExpextedResponse(status='ok')
-            ),
+        ( ExpextedResponse(status_code=200, body={'status': 'ok'}))
     ]
 )
-@pytest.mark.unit
-async def test_health_positive(test_client, case_setings, expected_response):
-    with patch('app.main.settings') as mock_settings:
+@pytest.mark.integration
+async def test_health_positive(test_client, test_settings, expected_response):
+    if test_settings.environment == 'development':
+        expected_response.body['environment'] = test_settings.environment
+        expected_response.body['debug'] = test_settings.debug
+    response = test_client.get("/health")
+    assert response.status_code == expected_response.status_code
+    assert response.json() == expected_response.body
