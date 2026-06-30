@@ -1,7 +1,10 @@
+from typing import Any
+
 from fastapi import FastAPI
 
 from app.api.v1.routers import documents
 from .config import settings
+
 app = FastAPI(
     title="El Redactor",
     version="0.1.0",
@@ -11,12 +14,13 @@ app = FastAPI(
     debug=settings.debug,
 )
 
-app.include_router(documents.router, prefix='/v1/documents')
+app.include_router(documents.router, prefix="/v1/documents")
 
-@app.get('/health')
+
+@app.get("/health")
 async def health() -> dict:
-    response = {'status':'ok'}
+    response: dict[str, Any] = {"status": "ok"}
     if settings.is_dev:
-        response['environment'] = settings.environment
-        response['debug'] = settings.debug
+        response["environment"] = settings.environment
+        response["debug"] = settings.debug
     return response

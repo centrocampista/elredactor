@@ -73,9 +73,9 @@ jobs:
         run: uv sync --group dev
 
       - name: Run unit tests
-        run: uv run pytest tests/unit -v --tb=short
+        run: uv run pytest tests/unit
         env:
-          ENVIRONMENT: test
+          ENVIRONMENT: development
           DEBUG: "false"
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -114,7 +114,7 @@ jobs:
           - 6333:6333
           - 6334:6334
         options: >-
-          --health-cmd "curl -sf http://localhost:6333/healthz"
+          --health-cmd "bash -c 'exec 3<>/dev/tcp/localhost/6333'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -129,24 +129,25 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
-      - name: Run DB migrations
-        run: uv run alembic upgrade head
-        env:
-          ENVIRONMENT: test
-          DEBUG: "false"
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test_db
-          POSTGRES_PORT: "5432"
-          QDRANT_SERVICE_API_KEY: test
-          QDRANT_SERVICE_READ_ONLY_API_KEY: test
-          QDRANT_SERVICE_HTTP_PORT: "6333"
-          QDRANT_SERVICE_GRPC_PORT: "6334"
+      # TODO: restore when Alembic is configured and migrations are implemented
+      # - name: Run DB migrations
+      #   run: uv run alembic upgrade head
+      #   env:
+      #     ENVIRONMENT: test
+      #     DEBUG: "false"
+      #     POSTGRES_USER: test
+      #     POSTGRES_PASSWORD: test
+      #     POSTGRES_DB: test_db
+      #     POSTGRES_PORT: "5432"
+      #     QDRANT_SERVICE_API_KEY: test
+      #     QDRANT_SERVICE_READ_ONLY_API_KEY: test
+      #     QDRANT_SERVICE_HTTP_PORT: "6333"
+      #     QDRANT_SERVICE_GRPC_PORT: "6334"
 
       - name: Run integration tests
-        run: uv run pytest tests/integration -v --tb=short
+        run: uv run pytest tests/integration
         env:
-          ENVIRONMENT: test
+          ENVIRONMENT: development
           DEBUG: "false"
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -189,6 +190,8 @@ jobs:
     permissions:
       issues: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Ensure labels exist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
