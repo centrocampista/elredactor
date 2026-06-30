@@ -40,6 +40,8 @@ jobs:
       issues: write
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Validate inputs
         run: |
           if [ -z "${{ inputs.issue_number }}" ] && [ -z "${{ inputs.branch_name }}" ]; then
