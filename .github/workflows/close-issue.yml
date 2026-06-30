@@ -110,6 +110,8 @@ jobs:
       issues: write
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Find and close issue for branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
