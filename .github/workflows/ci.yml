@@ -114,7 +114,7 @@ jobs:
           - 6333:6333
           - 6334:6334
         options: >-
-          --health-cmd "curl -sf http://localhost:6333/healthz"
+          --health-cmd "bash -c 'exec 3<>/dev/tcp/localhost/6333'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -190,6 +190,8 @@ jobs:
     permissions:
       issues: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Ensure labels exist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
