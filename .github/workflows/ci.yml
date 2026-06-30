@@ -189,11 +189,57 @@ jobs:
     permissions:
       issues: write
     steps:
+      - name: Ensure labels exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "ci-failure" \
+            --color "d73a4a" \
+            --description "CI pipeline failed" \
+            --force
+
+          gh label create "bug" \
+            --color "ee0701" \
+            --description "Something isn't working" \
+            --force
+
+          gh label create "branch-${{ github.ref_name }}" \
+            --color "fbca04" \
+            --description "Tracks CI issues for branch ${{ github.ref_name }}" \
+            --force
+
+      - name: Check for existing open issue
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=$(gh issue list \
+            --label "branch-${{ github.ref_name }}" \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -n "$ISSUE_NUMBER" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "number=$ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on existing issue
+        if: steps.check.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ steps.check.outputs.number }}" \
+            --body "CI failed again — run #${{ github.run_number }} on \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+
       - name: Create issue on CI failure
+        if: steps.check.outputs.exists == 'false'
         uses: dacbd/create-issue-action@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          title: "CI failed — ${{ github.ref_name }} #${{ github.run_number }}"
+          title: "[elredactor]-${{ github.ref_name }}-#${{ github.run_number }}"
           body: |
             ## CI Failure
 
@@ -205,4 +251,40 @@ jobs:
             | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
 
             Check which jobs failed and fix the errors.
-          labels: "ci-failure,bug"
+          labels: "ci-failure,bug,branch-${{ github.ref_name }}"
+
+  # ─────────────────────────────────────────────
+  # Auto PR → main (only on push to feature branch)
+  # ─────────────────────────────────────────────
+  create-pr:
+    name: Create PR → main
+    needs: [lint, typecheck, test-unit, test-integration, docker-build]
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' &&
+      github.ref != 'refs/heads/main'
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create PR if not exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+
+          EXISTING=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number')
+
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING already exists for branch $BRANCH — skipping."
+          else
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "$BRANCH" \
+              --body "Automated PR — CI passed on branch \`$BRANCH\`."
+            echo "PR created."
+          fi

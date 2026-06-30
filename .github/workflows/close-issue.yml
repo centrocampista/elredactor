@@ -1,0 +1,134 @@
+name: Close Issue
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to close (optional if branch_name is provided)'
+        required: false
+        type: number
+      branch_name:
+        description: 'Branch name — closes the issue labeled branch-<name> (optional)'
+        required: false
+        type: string
+      comment:
+        description: 'Comment to add before closing (optional)'
+        required: false
+        type: string
+      state_reason:
+        description: 'Reason for closing'
+        required: true
+        type: choice
+        default: 'completed'
+        options:
+          - completed
+          - not_planned
+
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Manual close (workflow_dispatch)
+  # ─────────────────────────────────────────────
+  close-issue-manual:
+    name: Close issue (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Validate inputs
+        run: |
+          if [ -z "${{ inputs.issue_number }}" ] && [ -z "${{ inputs.branch_name }}" ]; then
+            echo "::error::Provide either issue_number or branch_name."
+            exit 1
+          fi
+
+      - name: Resolve issue number
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.issue_number }}" ]; then
+            echo "number=${{ inputs.issue_number }}" >> "$GITHUB_OUTPUT"
+          else
+            NUMBER=$(gh issue list \
+              --label "branch-${{ inputs.branch_name }}" \
+              --state open \
+              --json number \
+              --jq '.[0].number')
+
+            if [ -z "$NUMBER" ]; then
+              echo "::error::No open issue found for branch '${{ inputs.branch_name }}'."
+              exit 1
+            fi
+
+            echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Add comment (if provided)
+        if: ${{ inputs.comment != '' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(${{ steps.resolve.outputs.number }}),
+              body: `${{ inputs.comment }}`
+            });
+
+      - name: Close issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(${{ steps.resolve.outputs.number }}),
+              state: 'closed',
+              state_reason: '${{ inputs.state_reason }}'
+            });
+
+      - name: Summary
+        run: |
+          echo "Issue #${{ steps.resolve.outputs.number }} closed (reason: ${{ inputs.state_reason }})"
+
+  # ─────────────────────────────────────────────
+  # Auto-close on PR merge
+  # ─────────────────────────────────────────────
+  close-issue-on-merge:
+    name: Close issue (auto on merge)
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Find and close issue for branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          NUMBER=$(gh issue list \
+            --label "branch-$BRANCH" \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -z "$NUMBER" ]; then
+            echo "No open issue found for branch '$BRANCH' — nothing to close."
+            exit 0
+          fi
+
+          gh issue comment "$NUMBER" \
+            --body "Fixed in PR #${{ github.event.pull_request.number }}, merged into \`main\`."
+
+          gh issue close "$NUMBER" --reason completed
+
+          echo "Closed issue #$NUMBER (branch: $BRANCH)."
