@@ -60,7 +60,7 @@ jobs:
       - name: Run mutation tests
         id: mutmut
         run: |
-          uv run mutmut run || true
+          PYTHONPATH=$GITHUB_WORKSPACE/mutants uv run mutmut run || true
 
           if [ -f "mutants/mutmut-cicd-stats.json" ]; then
             KILLED=$(python3 -c "import json; d=json.load(open('mutants/mutmut-cicd-stats.json')); print(d['killed'])")
