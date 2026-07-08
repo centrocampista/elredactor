@@ -32,24 +32,26 @@ jobs:
       - name: Run mutation tests
         id: mutmut
         run: |
-          uv run mutmut run 2>&1 | tee /tmp/mutmut-output.txt || true
+          uv run mutmut run || true
 
-          KILLED=$(grep -oP '(?<=Killed: )\d+' /tmp/mutmut-output.txt | tail -1 || echo "0")
-          SURVIVED=$(grep -oP '(?<=Survived: )\d+' /tmp/mutmut-output.txt | tail -1 || echo "0")
-          TOTAL=$((KILLED + SURVIVED))
-
-          if [ "$TOTAL" -gt 0 ]; then
-            SCORE=$(( KILLED * 100 / TOTAL ))
+          if [ -f "mutants/mutmut-cicd-stats.json" ]; then
+            KILLED=$(python3 -c "import json; d=json.load(open('mutants/mutmut-cicd-stats.json')); print(d['killed'])")
+            SURVIVED=$(python3 -c "import json; d=json.load(open('mutants/mutmut-cicd-stats.json')); print(d['survived'])")
+            TOTAL=$(python3 -c "import json; d=json.load(open('mutants/mutmut-cicd-stats.json')); print(d['total'])")
+            SCORE=$(python3 -c "import json; d=json.load(open('mutants/mutmut-cicd-stats.json')); k=d['killed']; s=d['survived']; print(round(k/(k+s)*100) if k+s>0 else 0)")
+            PARSED=true
           else
-            SCORE=0
+            KILLED=0; SURVIVED=0; TOTAL=0; SCORE=0; PARSED=false
+            echo "WARNING: mutants/mutmut-cicd-stats.json not found — check mutmut logs."
           fi
 
-          echo "killed=$KILLED"   >> "$GITHUB_OUTPUT"
+          echo "killed=$KILLED"     >> "$GITHUB_OUTPUT"
           echo "survived=$SURVIVED" >> "$GITHUB_OUTPUT"
-          echo "total=$TOTAL"     >> "$GITHUB_OUTPUT"
-          echo "score=$SCORE"     >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL"       >> "$GITHUB_OUTPUT"
+          echo "score=$SCORE"       >> "$GITHUB_OUTPUT"
+          echo "parsed=$PARSED"     >> "$GITHUB_OUTPUT"
 
-          echo "Mutation score: ${SCORE}% (${KILLED}/${TOTAL} killed)"
+          echo "Mutation score: ${SCORE}% (killed: ${KILLED}, survived: ${SURVIVED}, total: ${TOTAL})"
         env:
           ENVIRONMENT: development
           DEBUG: "false"
@@ -62,14 +64,14 @@ jobs:
           QDRANT_SERVICE_HTTP_PORT: "6333"
           QDRANT_SERVICE_GRPC_PORT: "6334"
 
-      - name: Upload mutmut cache
+      - name: Upload mutmut results
         uses: actions/upload-artifact@v4
         with:
-          name: mutmut-cache-${{ github.run_id }}
-          path: .mutmut-cache
+          name: mutmut-results-${{ github.run_id }}
+          path: mutants/
 
       - name: Ensure mutation-score label exists
-        if: ${{ steps.mutmut.outputs.score < 60 }}
+        if: ${{ steps.mutmut.outputs.parsed == 'true' && steps.mutmut.outputs.score < 60 }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -79,11 +81,12 @@ jobs:
             --force
 
       - name: Open or update issue on low mutation score
-        if: ${{ steps.mutmut.outputs.score < 60 }}
+        if: ${{ steps.mutmut.outputs.parsed == 'true' && steps.mutmut.outputs.score < 60 }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SCORE: ${{ steps.mutmut.outputs.score }}
           KILLED: ${{ steps.mutmut.outputs.killed }}
+          SURVIVED: ${{ steps.mutmut.outputs.survived }}
           TOTAL: ${{ steps.mutmut.outputs.total }}
         run: |
           EXISTING=$(gh issue list \
@@ -94,7 +97,7 @@ jobs:
 
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" \
-              --body "Mutation score still below threshold — **${SCORE}%** (${KILLED}/${TOTAL} killed) on \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              --body "Mutation score still below threshold — **${SCORE}%** (killed: ${KILLED}, survived: ${SURVIVED}) on \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           else
             gh issue create \
               --title "[nightly] Mutation score below threshold: ${SCORE}%" \
@@ -105,15 +108,16 @@ jobs:
           | | |
           |---|---|
           | **Score** | ${SCORE}% |
-          | **Killed** | ${KILLED}/${TOTAL} |
+          | **Killed** | ${KILLED} |
+          | **Survived** | ${SURVIVED} |
+          | **Total** | ${TOTAL} |
           | **Threshold** | 60% |
           | **Commit** | \`${{ github.sha }}\` |
           | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
 
-          Sprawdź które mutanty przeżyły i dodaj testy które je zabiją:
+          Download the \`mutmut-results\` artifact from this run and browse surviving mutants locally:
           \`\`\`
-          uv run mutmut results
-          uv run mutmut show <mutant_id>
+          uv run mutmut browse
           \`\`\`
           EOF
           )"
@@ -148,7 +152,7 @@ jobs:
             echo "vulnerable=false" >> "$GITHUB_OUTPUT"
           else
             echo "vulnerable=true" >> "$GITHUB_OUTPUT"
-            COUNT=$(python -c "
+            COUNT=$(python3 -c "
           import json
           data = json.load(open('audit-results.json'))
           deps = data if isinstance(data, list) else data.get('dependencies', [])
@@ -179,7 +183,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COUNT: ${{ steps.audit.outputs.count }}
         run: |
-          TABLE=$(python -c "
+          TABLE=$(python3 -c "
           import json
           data = json.load(open('audit-results.json'))
           deps = data if isinstance(data, list) else data.get('dependencies', [])
@@ -187,7 +191,7 @@ jobs:
           for d in deps:
               for v in d.get('vulns', []):
                   fixes = v.get('fix_versions', [])
-                  fix = fixes[0] if fixes else 'brak'
+                  fix = fixes[0] if fixes else 'none'
                   rows.append(f\"| {d['name']}=={d['version']} | {v['id']} | {fix} |\")
           print('\n'.join(rows))
           ")
@@ -200,17 +204,17 @@ jobs:
 
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" \
-              --body "CVE audit nadal wykrywa podatności — **${COUNT}** na \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              --body "CVE audit still detecting vulnerabilities — **${COUNT}** on \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           else
             gh issue create \
-              --title "[nightly] CVE: ${COUNT} podatności w zależnościach" \
+              --title "[nightly] CVE: ${COUNT} vulnerabilities found in dependencies" \
               --label "cve" \
               --body "$(cat <<EOF
           ## CVE Audit
 
-          Znaleziono **${COUNT}** podatności w zależnościach produkcyjnych.
+          Found **${COUNT}** vulnerabilities in production dependencies.
 
-          | Pakiet | CVE ID | Fix version |
+          | Package | CVE ID | Fix version |
           |---|---|---|
           ${TABLE}
 
@@ -219,7 +223,7 @@ jobs:
           | **Commit** | \`${{ github.sha }}\` |
           | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
 
-          Zaktualizuj podatne pakiety lub zweryfikuj czy CVE dotyczy używanego kodu.
+          Update vulnerable packages or verify whether the CVE affects your usage.
           \`\`\`
           uvx pip-audit -r requirements.txt
           \`\`\`
@@ -287,11 +291,7 @@ jobs:
       - name: Extract current coverage
         id: coverage
         run: |
-          PERCENT=$(python -c "
-          import json
-          d = json.load(open('coverage.json'))
-          print(round(d['totals']['percent_covered'], 1))
-          ")
+          PERCENT=$(python3 -c "import json; d=json.load(open('coverage.json')); print(round(d['totals']['percent_covered'], 1))")
           echo "percent=$PERCENT" >> "$GITHUB_OUTPUT"
           echo "Coverage: ${PERCENT}%"
 
@@ -311,19 +311,15 @@ jobs:
           CURRENT=${{ steps.coverage.outputs.percent }}
 
           if [ -f "./prev/coverage.json" ]; then
-            PREV=$(python -c "
-          import json
-          d = json.load(open('./prev/coverage.json'))
-          print(round(d['totals']['percent_covered'], 1))
-          ")
-            DROP=$(python -c "print(round($PREV - $CURRENT, 1))")
+            PREV=$(python3 -c "import json; d=json.load(open('./prev/coverage.json')); print(round(d['totals']['percent_covered'], 1))")
+            DROP=$(python3 -c "print(round($PREV - $CURRENT, 1))")
             echo "prev=$PREV"       >> "$GITHUB_OUTPUT"
             echo "drop=$DROP"       >> "$GITHUB_OUTPUT"
             echo "has_prev=true"    >> "$GITHUB_OUTPUT"
-            echo "Poprzednio: ${PREV}%, Teraz: ${CURRENT}%, Zmiana: -${DROP}%"
+            echo "Previous: ${PREV}%, Current: ${CURRENT}%, Drop: -${DROP}%"
           else
             echo "has_prev=false"   >> "$GITHUB_OUTPUT"
-            echo "Brak poprzedniego pomiaru — baseline: ${CURRENT}%"
+            echo "No previous measurement found — baseline set at ${CURRENT}%"
           fi
 
       - name: Save coverage artifact
@@ -359,24 +355,24 @@ jobs:
 
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" \
-              --body "Coverage nadal spada — **${PREV}% → ${CURRENT}%** (−${DROP}%) na \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              --body "Coverage still dropping — **${PREV}% → ${CURRENT}%** (−${DROP}%) on \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           else
             gh issue create \
-              --title "[nightly] Coverage spadło: ${PREV}% → ${CURRENT}% (−${DROP}%)" \
+              --title "[nightly] Coverage dropped: ${PREV}% → ${CURRENT}% (−${DROP}%)" \
               --label "coverage-drop" \
               --body "$(cat <<EOF
           ## Coverage Drop
 
           | | |
           |---|---|
-          | **Poprzednio** | ${PREV}% |
-          | **Teraz** | ${CURRENT}% |
-          | **Spadek** | −${DROP}% |
-          | **Próg** | 2% |
+          | **Previous** | ${PREV}% |
+          | **Current** | ${CURRENT}% |
+          | **Drop** | −${DROP}% |
+          | **Threshold** | 2% |
           | **Commit** | \`${{ github.sha }}\` |
           | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
 
-          Sprawdź które moduły straciły pokrycie:
+          Check which modules lost coverage:
           \`\`\`
           uv run pytest --cov=app --cov-report=term-missing
           \`\`\`
