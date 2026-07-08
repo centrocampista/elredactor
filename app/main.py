@@ -1,9 +1,20 @@
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
 
 from app.api.v1.routers import documents
+from app.db.lifespan import db_lifespan
+from app.vector_db.lifespan import qdrant_lifespan
 from .config import settings
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with AsyncExitStack() as stack:
+        await stack.enter_async_context(db_lifespan())
+        await stack.enter_async_context(qdrant_lifespan())
+        yield
+
 
 app = FastAPI(
     title="El Redactor",
