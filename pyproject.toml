@@ -46,6 +46,5 @@ markers = [
 plugins = ["pydantic.mypy"]
 
 [tool.mutmut]
-paths_to_mutate = "app/"
-runner = "pytest"
-tests_dir = "tests/"
+source_paths = ["app/"]
+pytest_add_cli_args_test_selection = ["tests/"]
