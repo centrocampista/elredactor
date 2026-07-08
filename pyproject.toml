@@ -47,4 +47,4 @@ plugins = ["pydantic.mypy"]
 
 [tool.mutmut]
 source_paths = ["app/"]
-pytest_add_cli_args_test_selection = ["tests/", "--no-cov", "--ignore=tests/e2e"]
+pytest_add_cli_args_test_selection = ["tests/", "--no-cov", "--ignore=tests/e2e", "--import-mode=importlib"]
