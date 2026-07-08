@@ -8,6 +8,7 @@ on:
 permissions:
   issues: write
   contents: read
+  actions: read
 
 env:
   PYTHON_VERSION: "3.12"
@@ -272,7 +273,7 @@ jobs:
         run: uv sync --group dev
 
       - name: Run tests with coverage
-        run: uv run pytest tests/unit tests/integration --cov-report=json --no-header -q
+        run: uv run pytest tests/unit tests/integration --cov-report=json --no-header
         env:
           ENVIRONMENT: development
           DEBUG: "false"
@@ -352,10 +353,10 @@ jobs:
 
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" \
-              --body "Coverage still dropping — **${PREV}% → ${CURRENT}%** (−${DROP}%) on \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              --body "Coverage still dropping — **${PREV}% → ${CURRENT}%** (-${DROP}%) on \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           else
             gh issue create \
-              --title "[nightly] Coverage dropped: ${PREV}% → ${CURRENT}% (−${DROP}%)" \
+              --title "[nightly] Coverage dropped: ${PREV}% → ${CURRENT}% (-${DROP}%)" \
               --label "coverage-drop" \
               --body "$(cat <<EOF
           ## Coverage Drop
@@ -364,7 +365,7 @@ jobs:
           |---|---|
           | **Previous** | ${PREV}% |
           | **Current** | ${CURRENT}% |
-          | **Drop** | −${DROP}% |
+          | **Drop** | -${DROP}% |
           | **Threshold** | 2% |
           | **Commit** | \`${{ github.sha }}\` |
           | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
