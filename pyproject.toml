@@ -36,6 +36,7 @@ dev = [
 testpaths = ["tests"]
 addopts = "-v --tb=short --cov=app --cov-report=term-missing"
 asyncio_mode = "auto"
+pythonpath = ["."]
 markers = [
     "unit: unit tests — no external services",
     "integration: integration tests — requires PostgreSQL and Qdrant",
