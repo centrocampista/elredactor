@@ -1,0 +1,385 @@
+name: ElRedactor - Nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Mutation tests (mutmut)
+  # ─────────────────────────────────────────────
+  mutation-tests:
+    name: Mutation tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run mutation tests
+        id: mutmut
+        run: |
+          uv run mutmut run 2>&1 | tee /tmp/mutmut-output.txt || true
+
+          KILLED=$(grep -oP '(?<=Killed: )\d+' /tmp/mutmut-output.txt | tail -1 || echo "0")
+          SURVIVED=$(grep -oP '(?<=Survived: )\d+' /tmp/mutmut-output.txt | tail -1 || echo "0")
+          TOTAL=$((KILLED + SURVIVED))
+
+          if [ "$TOTAL" -gt 0 ]; then
+            SCORE=$(( KILLED * 100 / TOTAL ))
+          else
+            SCORE=0
+          fi
+
+          echo "killed=$KILLED"   >> "$GITHUB_OUTPUT"
+          echo "survived=$SURVIVED" >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL"     >> "$GITHUB_OUTPUT"
+          echo "score=$SCORE"     >> "$GITHUB_OUTPUT"
+
+          echo "Mutation score: ${SCORE}% (${KILLED}/${TOTAL} killed)"
+        env:
+          ENVIRONMENT: development
+          DEBUG: "false"
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+          POSTGRES_PORT: "5432"
+          QDRANT_SERVICE_API_KEY: test
+          QDRANT_SERVICE_READ_ONLY_API_KEY: test
+          QDRANT_SERVICE_HTTP_PORT: "6333"
+          QDRANT_SERVICE_GRPC_PORT: "6334"
+
+      - name: Upload mutmut cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutmut-cache-${{ github.run_id }}
+          path: .mutmut-cache
+
+      - name: Ensure mutation-score label exists
+        if: ${{ steps.mutmut.outputs.score < 60 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "mutation-score" \
+            --color "e4e669" \
+            --description "Mutation test score below threshold" \
+            --force
+
+      - name: Open or update issue on low mutation score
+        if: ${{ steps.mutmut.outputs.score < 60 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SCORE: ${{ steps.mutmut.outputs.score }}
+          KILLED: ${{ steps.mutmut.outputs.killed }}
+          TOTAL: ${{ steps.mutmut.outputs.total }}
+        run: |
+          EXISTING=$(gh issue list \
+            --label "mutation-score" \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" \
+              --body "Mutation score still below threshold — **${SCORE}%** (${KILLED}/${TOTAL} killed) on \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          else
+            gh issue create \
+              --title "[nightly] Mutation score below threshold: ${SCORE}%" \
+              --label "mutation-score" \
+              --body "$(cat <<EOF
+          ## Mutation Test Results
+
+          | | |
+          |---|---|
+          | **Score** | ${SCORE}% |
+          | **Killed** | ${KILLED}/${TOTAL} |
+          | **Threshold** | 60% |
+          | **Commit** | \`${{ github.sha }}\` |
+          | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+          Sprawdź które mutanty przeżyły i dodaj testy które je zabiją:
+          \`\`\`
+          uv run mutmut results
+          uv run mutmut show <mutant_id>
+          \`\`\`
+          EOF
+          )"
+          fi
+
+  # ─────────────────────────────────────────────
+  # CVE audit (pip-audit)
+  # ─────────────────────────────────────────────
+  cve-audit:
+    name: CVE audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Export production requirements
+        run: uv export --no-dev --format requirements-txt -o /tmp/requirements.txt
+
+      - name: Run pip-audit
+        id: audit
+        run: |
+          if uvx pip-audit \
+              --requirement /tmp/requirements.txt \
+              --format json \
+              --output audit-results.json; then
+            echo "vulnerable=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "vulnerable=true" >> "$GITHUB_OUTPUT"
+            COUNT=$(python -c "
+          import json
+          data = json.load(open('audit-results.json'))
+          deps = data if isinstance(data, list) else data.get('dependencies', [])
+          print(sum(len(d.get('vulns', [])) for d in deps))
+          ")
+            echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: cve-audit-${{ github.run_id }}
+          path: audit-results.json
+
+      - name: Ensure cve label exists
+        if: steps.audit.outputs.vulnerable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "cve" \
+            --color "b60205" \
+            --description "Known CVE in dependencies" \
+            --force
+
+      - name: Open or update issue on vulnerabilities found
+        if: steps.audit.outputs.vulnerable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COUNT: ${{ steps.audit.outputs.count }}
+        run: |
+          TABLE=$(python -c "
+          import json
+          data = json.load(open('audit-results.json'))
+          deps = data if isinstance(data, list) else data.get('dependencies', [])
+          rows = []
+          for d in deps:
+              for v in d.get('vulns', []):
+                  fixes = v.get('fix_versions', [])
+                  fix = fixes[0] if fixes else 'brak'
+                  rows.append(f\"| {d['name']}=={d['version']} | {v['id']} | {fix} |\")
+          print('\n'.join(rows))
+          ")
+
+          EXISTING=$(gh issue list \
+            --label "cve" \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" \
+              --body "CVE audit nadal wykrywa podatności — **${COUNT}** na \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          else
+            gh issue create \
+              --title "[nightly] CVE: ${COUNT} podatności w zależnościach" \
+              --label "cve" \
+              --body "$(cat <<EOF
+          ## CVE Audit
+
+          Znaleziono **${COUNT}** podatności w zależnościach produkcyjnych.
+
+          | Pakiet | CVE ID | Fix version |
+          |---|---|---|
+          ${TABLE}
+
+          | | |
+          |---|---|
+          | **Commit** | \`${{ github.sha }}\` |
+          | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+          Zaktualizuj podatne pakiety lub zweryfikuj czy CVE dotyczy używanego kodu.
+          \`\`\`
+          uvx pip-audit -r requirements.txt
+          \`\`\`
+          EOF
+          )"
+          fi
+
+  # ─────────────────────────────────────────────
+  # Coverage trend
+  # ─────────────────────────────────────────────
+  coverage-trend:
+    name: Coverage trend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      qdrant:
+        image: qdrant/qdrant:v1.13.6
+        ports:
+          - 6333:6333
+          - 6334:6334
+        options: >-
+          --health-cmd "bash -c 'exec 3<>/dev/tcp/localhost/6333'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run tests with coverage
+        run: uv run pytest tests/unit tests/integration --cov-report=json --no-header -q
+        env:
+          ENVIRONMENT: development
+          DEBUG: "false"
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+          POSTGRES_PORT: "5432"
+          QDRANT_SERVICE_API_KEY: test
+          QDRANT_SERVICE_READ_ONLY_API_KEY: test
+          QDRANT_SERVICE_HTTP_PORT: "6333"
+          QDRANT_SERVICE_GRPC_PORT: "6334"
+
+      - name: Extract current coverage
+        id: coverage
+        run: |
+          PERCENT=$(python -c "
+          import json
+          d = json.load(open('coverage.json'))
+          print(round(d['totals']['percent_covered'], 1))
+          ")
+          echo "percent=$PERCENT" >> "$GITHUB_OUTPUT"
+          echo "Coverage: ${PERCENT}%"
+
+      - name: Download previous coverage report
+        id: prev_download
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          name: coverage-report
+          workflow: nightly.yml
+          workflow_conclusion: success
+          path: ./prev
+
+      - name: Compare coverage
+        id: compare
+        run: |
+          CURRENT=${{ steps.coverage.outputs.percent }}
+
+          if [ -f "./prev/coverage.json" ]; then
+            PREV=$(python -c "
+          import json
+          d = json.load(open('./prev/coverage.json'))
+          print(round(d['totals']['percent_covered'], 1))
+          ")
+            DROP=$(python -c "print(round($PREV - $CURRENT, 1))")
+            echo "prev=$PREV"       >> "$GITHUB_OUTPUT"
+            echo "drop=$DROP"       >> "$GITHUB_OUTPUT"
+            echo "has_prev=true"    >> "$GITHUB_OUTPUT"
+            echo "Poprzednio: ${PREV}%, Teraz: ${CURRENT}%, Zmiana: -${DROP}%"
+          else
+            echo "has_prev=false"   >> "$GITHUB_OUTPUT"
+            echo "Brak poprzedniego pomiaru — baseline: ${CURRENT}%"
+          fi
+
+      - name: Save coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.json
+          overwrite: true
+
+      - name: Ensure coverage-drop label exists
+        if: ${{ steps.compare.outputs.has_prev == 'true' && steps.compare.outputs.drop > 2 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "coverage-drop" \
+            --color "e4e669" \
+            --description "Test coverage dropped significantly" \
+            --force
+
+      - name: Open or update issue on coverage drop
+        if: ${{ steps.compare.outputs.has_prev == 'true' && steps.compare.outputs.drop > 2 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT: ${{ steps.coverage.outputs.percent }}
+          PREV: ${{ steps.compare.outputs.prev }}
+          DROP: ${{ steps.compare.outputs.drop }}
+        run: |
+          EXISTING=$(gh issue list \
+            --label "coverage-drop" \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" \
+              --body "Coverage nadal spada — **${PREV}% → ${CURRENT}%** (−${DROP}%) na \`${{ github.sha }}\`. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          else
+            gh issue create \
+              --title "[nightly] Coverage spadło: ${PREV}% → ${CURRENT}% (−${DROP}%)" \
+              --label "coverage-drop" \
+              --body "$(cat <<EOF
+          ## Coverage Drop
+
+          | | |
+          |---|---|
+          | **Poprzednio** | ${PREV}% |
+          | **Teraz** | ${CURRENT}% |
+          | **Spadek** | −${DROP}% |
+          | **Próg** | 2% |
+          | **Commit** | \`${{ github.sha }}\` |
+          | **Run** | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+          Sprawdź które moduły straciły pokrycie:
+          \`\`\`
+          uv run pytest --cov=app --cov-report=term-missing
+          \`\`\`
+          EOF
+          )"
+          fi
