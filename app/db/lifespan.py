@@ -11,7 +11,8 @@ async def check_db_connection() -> bool:
         return True
     except Exception:
         return False
-    
+
+
 @asynccontextmanager
 async def db_lifespan():
     if not await check_db_connection():

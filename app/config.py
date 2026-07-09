@@ -4,13 +4,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    
     postgres_user: str
     postgres_password: str
     postgres_db: str
     postgres_port: int = 5432
     postgres_host: str
-    
+
     environment: Literal["development", "staging", "production"] = "production"
     debug: bool = False
 
@@ -22,7 +21,7 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/"
             f"{self.postgres_db}"
         )
-        
+
     groq_api_key: str
 
     qdrant_service_host: str
@@ -31,7 +30,7 @@ class Settings(BaseSettings):
     qdrant_service_read_only_api_key: str
     qdrant_service_api_key: str
     qdrant_service_prefer_grpc: bool = False
-    
+
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", env_file_encoding="utf-8", case_sensitive=False
     )

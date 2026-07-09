@@ -8,6 +8,7 @@ from app.db.lifespan import db_lifespan
 from app.vector_db.lifespan import qdrant_lifespan
 from .config import settings
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with AsyncExitStack() as stack:
