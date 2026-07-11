@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     postgres_password: str
     postgres_db: str
     postgres_port: int = 5432
-    postgres_host: str = 'postgres_red'
+    postgres_host: str = "postgres_red"
 
     environment: Literal["development", "staging", "production"] = "production"
     debug: bool = False
@@ -16,15 +16,15 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         return (
-            f"postgressql+asyncpg://"
+            f"postgresql+asyncpg://"
             f"{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/"
             f"{self.postgres_db}"
         )
 
-    groq_api_key: str = ''
+    groq_api_key: str = ""
 
-    qdrant_service_host: str = 'qdrant'
+    qdrant_service_host: str = "qdrant"
     qdrant_service_http_port: str
     qdrant_service_grpc_port: str
     qdrant_service_read_only_api_key: str
