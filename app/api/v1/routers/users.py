@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter(prefix="/users", tags=["user"])
 
 
-@router.post
+@router.post("/")
 async def create_new_user(
     user_create: UserCreate, session: AsyncSession = Depends(get_db)
 ) -> UserResponse:
@@ -16,7 +16,7 @@ async def create_new_user(
     return UserResponse.model_validate(user)
 
 
-@router.patch
+@router.patch("/")
 async def update_existing_user(
     user_update: UserUpdate, session: AsyncSession = Depends(get_db)
 ) -> UserResponse:
