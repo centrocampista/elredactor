@@ -23,10 +23,13 @@ def test_user_id_is_primey_key():
     col = User.__table__.columns["id"]
     assert col.primary_key is True
 
+
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "user_create",
-    [UserCreate(first_name="Jan", last_name="Kowalski", email="jan@example.com"),]
+    [
+        UserCreate(first_name="Jan", last_name="Kowalski", email="jan@example.com"),
+    ],
 )
 async def test_create_user(mock_session, user_create):
     user = await create_user(mock_session, user_create)
