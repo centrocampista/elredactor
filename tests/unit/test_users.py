@@ -2,9 +2,9 @@
 from pydantic import ValidationError
 import pytest
 
-from app.crud.user import create_user
-from app.models.user import User
-from app.schemas.user import UserCreate
+from app.crud.users import create_user
+from app.models.users import User
+from app.schemas.users import UserCreate
 
 @pytest.mark.unit
 def test_user_has_email_column():
@@ -39,7 +39,7 @@ def test_user_create_invalid_email():
     with pytest.raises(ValidationError):
         UserCreate(first_name="Jan", last_name="Kowalski", email="nie-email")
 
-@pytest.mark.unit 
+@pytest.mark.unit
 def test_user_create_missing_field():
     with pytest.raises(ValidationError):
         UserCreate(first_name="Jan", email="jan@example.com") 
