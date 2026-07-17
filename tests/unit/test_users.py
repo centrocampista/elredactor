@@ -21,13 +21,21 @@ def test_user_id_is_primey_key():
     col = User.__table__.columns['id']
     assert col.primary_key is True
 
+# first_name="Jan", last_name="Kowalski", email="jan@example.com"
 
 @pytest.mark.unit 
-async def test_create_user(mock_session):
-    user = await create_user(mock_session, first_name="Jan", last_name="Kowalski", email="jan@example.com")
+@pytest.mark.parametrize(
+    'user_create', (UserCreate(
+        first_name="Jan",
+        last_name='Kowalski',
+        email='jan@example.com'
+    ))
+)
+async def test_create_user(mock_session, user_create):
+    user = await create_user(mock_session)
     mock_session.add.assert_called_once()
     mock_session.commit.assert_called_once()
-    assert user.email == "jan@example.com"
+    assert user.email == user_create.email
 
 @pytest.mark.unit 
 def test_user_create_valid():
@@ -37,7 +45,7 @@ def test_user_create_valid():
 @pytest.mark.unit 
 def test_user_create_invalid_email():
     with pytest.raises(ValidationError):
-        UserCreate(first_name="Jan", last_name="Kowalski", email="nie-email")
+        UserCreate(first_name="Jan", last_name="Kowalski", email="not-email")
 
 @pytest.mark.unit
 def test_user_create_missing_field():
