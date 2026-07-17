@@ -5,6 +5,7 @@ from app.config import settings
 from app.db.session import engine, get_db
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+
 @pytest.fixture(scope="module")
 def test_client():
     return TestClient(app)
@@ -13,6 +14,7 @@ def test_client():
 @pytest.fixture(scope="module")
 def test_settings():
     return settings
+
 
 @pytest.fixture(scope="function")
 async def db_session():
