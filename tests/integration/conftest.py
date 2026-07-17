@@ -4,6 +4,7 @@ from app.main import app
 from app.config import settings
 from app.db.session import engine, get_db
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from httpx import AsyncClient, ASGITransport
 
 
 @pytest.fixture(scope="module")
@@ -41,4 +42,14 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def client_httpx(db_session):
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    yield AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
     app.dependency_overrides.clear()
