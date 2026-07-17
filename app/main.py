@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from app.api.v1.routers import documents
+from app.api.v1.routers import documents, users
 from app.db.lifespan import db_lifespan
 from app.vector_db.lifespan import qdrant_lifespan
 from .config import settings
@@ -27,6 +27,7 @@ app = FastAPI(
 )
 
 app.include_router(documents.router, prefix="/v1/documents")
+app.include_router(users.router, prefix="/v1")
 
 
 @app.get("/health")
