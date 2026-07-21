@@ -58,3 +58,18 @@ def client_httpx(db_session):
 @pytest.fixture
 def sample_pdf() -> bytes:
     return b"%PDF-1.4 1 0 obj<</Type/Catalog>>endobj"
+
+
+@pytest.fixture
+def sample_txt() -> bytes:
+    return b"plain text file"
+
+
+@pytest.fixture
+def sample_md() -> bytes:
+    return b"# Md heading"
+
+
+@pytest.fixture
+def sample_docx() -> bytes:
+    return b"PK\x03\x04"  # zip file signature
