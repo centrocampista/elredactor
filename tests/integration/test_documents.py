@@ -3,6 +3,8 @@ import uuid
 
 import pytest
 
+FAKE_MAX_FILE_SIZE = 100
+
 
 @pytest.mark.parametrize(
     "file_configuration",
@@ -79,3 +81,43 @@ def test_upload_invalid_document(tmp_path, test_client):
         )
 
     assert response.status_code == 415
+
+
+@pytest.mark.integration
+def test_upload_too_large_document(tmp_path, test_client):
+    with patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path):
+        with patch("app.api.v1.routers.documents.MAX_FILE_SIZE", FAKE_MAX_FILE_SIZE):
+            response = test_client.post(
+                "v1/documents/upload",
+                files={
+                    "file": (
+                        "test.pdf",
+                        b"x" * (FAKE_MAX_FILE_SIZE + 1),
+                        "application/pdf",
+                    )
+                },
+            )
+
+    assert response.status_code == 413
+
+
+@pytest.mark.integration
+def test_upload_without_file(test_client):
+    response = test_client.post("v1/documents/upload")
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_upload_documment_to_missing_dir(tmp_path, test_client, sample_pdf):
+    missing_dir = tmp_path / "missing_dir"
+    with patch("app.api.v1.routers.documents.UPLOAD_DIR", missing_dir):
+        response = test_client.post(
+            "v1/documents/upload",
+            files={"file": ("test.pdf", sample_pdf, "application/pdf")},
+        )
+
+    assert response.status_code == 201
+    assert missing_dir.exists()
+    body = response.json()
+    saved_file = missing_dir / f"{body['document_id']}{body['extension']}"
+    assert saved_file.exists()
