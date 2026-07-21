@@ -26,7 +26,7 @@ app = FastAPI(
     debug=settings.debug,
 )
 
-app.include_router(documents.router, prefix="/v1/documents")
+app.include_router(documents.router, prefix="/v1")
 app.include_router(users.router, prefix="/v1")
 
 

@@ -24,7 +24,7 @@ class UploadValidator:
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-@router.post("/upload")
+@router.post("/upload", status_code=201)
 async def upload_document(validator: UploadValidator = Depends()):
     contents = await validator.validate()
     document_id = str(uuid.uuid4())
@@ -33,7 +33,7 @@ async def upload_document(validator: UploadValidator = Depends()):
     extension = ALLOWED_TYPES[content_type]
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = UPLOAD_DIR / f"{document_id}.{extension}"
+    file_path = UPLOAD_DIR / f"{document_id}{extension}"
 
     file_path.write_bytes(contents)
 

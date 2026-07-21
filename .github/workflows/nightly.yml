@@ -358,7 +358,7 @@ jobs:
             echo "prev=$PREV"       >> "$GITHUB_OUTPUT"
             echo "drop=$DROP"       >> "$GITHUB_OUTPUT"
             echo "has_prev=true"    >> "$GITHUB_OUTPUT"
-            echo "Previous: ${PREV}%, Current: ${CURRENT}%, Drop: -${DROP}%"
+            echo "Previous: ${PREV}%, Current: ${CURRENT}%, Drop: ${DROP}%"
           else
             echo "has_prev=false"   >> "$GITHUB_OUTPUT"
             echo "No previous measurement found — baseline set at ${CURRENT}%"
@@ -420,4 +420,22 @@ jobs:
           \`\`\`
           EOF
           )"
+          fi
+
+      - name: Close coverage-drop issue if coverage recovered
+        if: ${{ steps.compare.outputs.has_prev == 'true' && steps.compare.outputs.drop <= 0 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT: ${{ steps.coverage.outputs.percent }}
+          PREV: ${{ steps.compare.outputs.prev }}
+        run: |
+          EXISTING=$(gh issue list \
+            --label "coverage-drop" \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" \
+              --comment "Coverage recovered — **${PREV}% → ${CURRENT}%** on \`${{ github.sha }}\`. [View logs](${{github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           fi

@@ -53,3 +53,8 @@ def client_httpx(db_session):
     app.dependency_overrides[get_db] = override_get_db
     yield AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def sample_pdf() -> bytes:
+    return b"%PDF-1.4 1 0 obj<</Type/Catalog>>endobj"
