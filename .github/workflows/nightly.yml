@@ -87,6 +87,7 @@ jobs:
           POSTGRES_PASSWORD: test
           POSTGRES_DB: test_db
           POSTGRES_PORT: "5432"
+          POSTGRES_HOST: localhost
           QDRANT_SERVICE_API_KEY: test
           QDRANT_SERVICE_READ_ONLY_API_KEY: test
           QDRANT_SERVICE_HTTP_PORT: "6333"
@@ -308,6 +309,7 @@ jobs:
           POSTGRES_PASSWORD: test
           POSTGRES_DB: test_db
           POSTGRES_PORT: "5432"
+          POSTGRES_HOST: localhost
           QDRANT_SERVICE_API_KEY: test
           QDRANT_SERVICE_READ_ONLY_API_KEY: test
           QDRANT_SERVICE_HTTP_PORT: "6333"

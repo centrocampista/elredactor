@@ -1,8 +1,26 @@
 from unittest.mock import AsyncMock, MagicMock
 
+from fastapi import HTTPException
 import pytest
 
 from app.api.v1.routers.documents import UploadValidator
+
+
+@pytest.mark.parametrize(
+    "content_type, return_value",
+    [
+        ("audio/mp3", b""),
+    ],
+)
+@pytest.mark.unit
+async def test_invalid_content_type(content_type, return_value):
+    file = MagicMock()
+    file.content_type = content_type
+    file.read = AsyncMock(return_value=return_value)
+    with pytest.raises(HTTPException) as http_except:
+        validator = UploadValidator(file=file)
+        await validator.validate()
+    assert http_except.value.status_code == 415
 
 
 @pytest.mark.parametrize(
