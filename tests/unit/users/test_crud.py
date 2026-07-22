@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock, patch
 import uuid
 
 import pytest
+from sqlalchemy import Result
 
-from app.crud.users import create_user, update_user
+from app.crud.users import create_user, get_user_by_email, update_user
 from app.models.users import User
 from app.schemas.users import UserCreate, UserUpdate
 
@@ -85,3 +87,29 @@ async def test_update_user_exclude_unset(mock_session, db_user, user_update):
     assert result.first_name == expected_first_name
     assert result.last_name == expected_last_name
     assert result.email == db_user.email 
+
+@pytest.mark.parametrize(
+    "db_user, found",
+    [
+        (
+        User(id=uuid.uuid4(), first_name="Jan", last_name="Kowalski", email="jan@example.com"), True
+        ),
+        (
+        User(id=uuid.uuid4(), first_name="Jan", last_name="Kowalski", email="jan@example.com"), False
+        ),
+    ],
+)
+@pytest.mark.unit
+async def test_get_user_by_email(mock_session, db_user, found):
+    db_result = MagicMock()
+    db_result.scalar_one_or_none.return_value = db_user if found else None
+    mock_session.execute.return_value = db_result
+    result = await get_user_by_email(mock_session, db_user.email)
+    mock_session.execute.assert_called_once()
+
+    if found:
+        assert result.email == db_user.email
+    else:
+        assert result == None 
+        
+        
