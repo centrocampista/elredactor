@@ -3,9 +3,14 @@ import pytest
 from app.main import app
 from app.config import settings
 from app.db.session import engine, get_db
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from httpx import AsyncClient, ASGITransport
 
+test_engine = create_async_engine(
+    settings.database_url,
+    poolclass=NullPool,
+)
 
 @pytest.fixture(scope="module")
 def test_client():
@@ -20,7 +25,7 @@ def test_settings():
 @pytest.fixture(scope="function")
 async def db_session():
 
-    async with engine.connect() as connection:
+    async with test_engine.connect() as connection:
         await connection.begin()
 
         async_session = async_sessionmaker(
@@ -46,7 +51,7 @@ def client(db_session):
 
 
 @pytest.fixture(scope="function")
-def client_httpx(db_session):
+async def client_httpx(db_session):
     async def override_get_db():
         yield db_session
 

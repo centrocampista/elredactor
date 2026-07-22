@@ -6,8 +6,9 @@ from app.schemas.users import UserCreate, UserUpdate
 
 async def create_user(db_session: AsyncSession, data: UserCreate) -> User:
     user = User(**data.model_dump())
-    db_session.add(user)
-    await db_session.flush()
+    async with db_session.begin_nested():
+        db_session.add(user)
+        await db_session.flush()
     await db_session.refresh(user)
     return user
 
