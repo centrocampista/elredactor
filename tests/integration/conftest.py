@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 import pytest
 from app.main import app
 from app.config import settings
-from app.db.session import engine, get_db
+from app.db.session import get_db
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from httpx import AsyncClient, ASGITransport
@@ -11,6 +11,7 @@ test_engine = create_async_engine(
     settings.database_url,
     poolclass=NullPool,
 )
+
 
 @pytest.fixture(scope="module")
 def test_client():
