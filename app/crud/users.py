@@ -13,7 +13,9 @@ async def create_user(db_session: AsyncSession, data: UserCreate) -> User:
 
 
 async def update_user(db_session: AsyncSession, user: User, data: UserUpdate) -> User:
-    changes = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
+    changes = {
+        k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None
+    }
     changes.pop("email")
     for k, v in changes.items():
         setattr(user, k, v)
