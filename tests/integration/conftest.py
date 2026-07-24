@@ -1,5 +1,8 @@
+import uuid
+
 from fastapi.testclient import TestClient
 import pytest
+from app.api.v1.routers.dependencies import get_current_credential
 from app.main import app
 from app.config import settings
 from app.db.session import get_db
@@ -7,15 +10,12 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from httpx import AsyncClient, ASGITransport
 
+from app.models.api_credentials import ApiCredential
+
 test_engine = create_async_engine(
     settings.database_url,
     poolclass=NullPool,
 )
-
-
-@pytest.fixture(scope="module")
-def test_client():
-    return TestClient(app)
 
 
 @pytest.fixture(scope="module")
@@ -41,12 +41,19 @@ async def db_session():
         await connection.rollback()
 
 
+async def override_get_current_credential() -> ApiCredential:
+    return ApiCredential(
+        id=uuid.uuid4(), user_id=uuid.uuid4(), key="test-key", secret_hash="x"
+    )
+
+
 @pytest.fixture(scope="function")
-def client(db_session):
+def client_fastapi(db_session):
     async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_credential] = override_get_current_credential
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -57,6 +64,7 @@ async def client_httpx(db_session):
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_credential] = override_get_current_credential
     yield AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
     app.dependency_overrides.clear()
 

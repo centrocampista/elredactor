@@ -20,14 +20,27 @@ jobs:
   mutation-tests:
     name: Mutation tests
     runs-on: ubuntu-latest
+    environment: development
+    env:
+      ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+      DEBUG: ${{ vars.DEBUG }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+      POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+      QDRANT_SERVICE_API_KEY: ${{ secrets.QDRANT_SERVICE_API_KEY }}
+      QDRANT_SERVICE_READ_ONLY_API_KEY: ${{ secrets.QDRANT_SERVICE_READ_ONLY_API_KEY }}
+      QDRANT_SERVICE_HTTP_PORT: ${{ vars.QDRANT_SERVICE_HTTP_PORT }}
+      QDRANT_SERVICE_GRPC_PORT: ${{ vars.QDRANT_SERVICE_GRPC_PORT }}
 
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test_db
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
         options: >-
           --health-cmd "pg_isready -U test"
           --health-interval 10s
@@ -80,18 +93,6 @@ jobs:
           echo "parsed=$PARSED"     >> "$GITHUB_OUTPUT"
 
           echo "Mutation score: ${SCORE}% (killed: ${KILLED}, survived: ${SURVIVED}, total: ${TOTAL})"
-        env:
-          ENVIRONMENT: development
-          DEBUG: "false"
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test_db
-          POSTGRES_PORT: "5432"
-          POSTGRES_HOST: localhost
-          QDRANT_SERVICE_API_KEY: test
-          QDRANT_SERVICE_READ_ONLY_API_KEY: test
-          QDRANT_SERVICE_HTTP_PORT: "6333"
-          QDRANT_SERVICE_GRPC_PORT: "6334"
 
       - name: Upload mutmut results
         uses: actions/upload-artifact@v4
@@ -263,14 +264,27 @@ jobs:
   coverage-trend:
     name: Coverage trend
     runs-on: ubuntu-latest
+    environment: development
+    env:
+      ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+      DEBUG: ${{ vars.DEBUG }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+      POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+      QDRANT_SERVICE_API_KEY: ${{ secrets.QDRANT_SERVICE_API_KEY }}
+      QDRANT_SERVICE_READ_ONLY_API_KEY: ${{ secrets.QDRANT_SERVICE_READ_ONLY_API_KEY }}
+      QDRANT_SERVICE_HTTP_PORT: ${{ vars.QDRANT_SERVICE_HTTP_PORT }}
+      QDRANT_SERVICE_GRPC_PORT: ${{ vars.QDRANT_SERVICE_GRPC_PORT }}
 
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test_db
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
         options: >-
           --health-cmd "pg_isready -U test"
           --health-interval 10s
@@ -302,33 +316,9 @@ jobs:
       
       - name: Run DB migrations
         run: uv run alembic upgrade head
-        env:
-          ENVIRONMENT: development
-          DEBUG: "false"
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test_db
-          POSTGRES_PORT: "5432"
-          POSTGRES_HOST: localhost
-          QDRANT_SERVICE_API_KEY: test
-          QDRANT_SERVICE_READ_ONLY_API_KEY: test
-          QDRANT_SERVICE_HTTP_PORT: "6333"
-          QDRANT_SERVICE_GRPC_PORT: "6334"
 
       - name: Run tests with coverage
         run: uv run pytest tests/unit tests/integration --cov-report=json --no-header
-        env:
-          ENVIRONMENT: development
-          DEBUG: "false"
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test_db
-          POSTGRES_PORT: "5432"
-          POSTGRES_HOST: localhost
-          QDRANT_SERVICE_API_KEY: test
-          QDRANT_SERVICE_READ_ONLY_API_KEY: test
-          QDRANT_SERVICE_HTTP_PORT: "6333"
-          QDRANT_SERVICE_GRPC_PORT: "6334"
 
       - name: Extract current coverage
         id: coverage

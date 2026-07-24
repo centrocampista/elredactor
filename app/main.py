@@ -1,9 +1,8 @@
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Any
 
 from fastapi import FastAPI
 
-from app.api.v1.routers import documents, users
+from app.api.v1.routers import api_credentials, documents, health, users
 from app.db.lifespan import db_lifespan
 from app.vector_db.lifespan import qdrant_lifespan
 from .config import settings
@@ -26,14 +25,7 @@ app = FastAPI(
     debug=settings.debug,
 )
 
-app.include_router(documents.router, prefix="/v1")
+app.include_router(health.router)
+app.include_router(api_credentials.router, prefix="/v1")
 app.include_router(users.router, prefix="/v1")
-
-
-@app.get("/health")
-async def health() -> dict:
-    response: dict[str, Any] = {"status": "ok"}
-    if settings.is_dev:
-        response["environment"] = settings.environment
-        response["debug"] = settings.debug
-    return response
+app.include_router(documents.router, prefix="/v1")

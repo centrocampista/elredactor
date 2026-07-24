@@ -2,12 +2,15 @@ from sqlalchemy.exc import IntegrityError
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.v1.routers.dependencies import get_current_credential
 from app.crud.users import create_user, get_user_by_email, update_user
 from app.db.session import get_db
 from app.schemas.users import UserCreate, UserResponse, UserUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(prefix="/users", tags=["user"])
+router = APIRouter(
+    prefix="/users", tags=["user"], dependencies=[Depends(get_current_credential)]
+)
 
 
 @router.post("", status_code=201)

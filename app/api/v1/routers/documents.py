@@ -2,6 +2,7 @@ import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 
 from app.api.v1.routers.contsants import ALLOWED_TYPES, MAX_FILE_SIZE, UPLOAD_DIR
+from app.api.v1.routers.dependencies import get_current_credential
 
 
 class UploadValidator:
@@ -21,7 +22,11 @@ class UploadValidator:
         return contents
 
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(
+    prefix="/documents",
+    tags=["documents"],
+    dependencies=[Depends(get_current_credential)],
+)
 
 
 @router.post("/upload", status_code=201)
