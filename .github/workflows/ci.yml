@@ -63,6 +63,18 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     environment: development
+    env:
+      ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+      DEBUG: ${{ vars.DEBUG }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+      POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+      QDRANT_SERVICE_API_KEY: ${{ secrets.QDRANT_SERVICE_API_KEY }}
+      QDRANT_SERVICE_READ_ONLY_API_KEY: ${{ secrets.QDRANT_SERVICE_READ_ONLY_API_KEY }}
+      QDRANT_SERVICE_HTTP_PORT: ${{ vars.QDRANT_SERVICE_HTTP_PORT }}
+      QDRANT_SERVICE_GRPC_PORT: ${{ vars.QDRANT_SERVICE_GRPC_PORT }}
     steps:
       - uses: actions/checkout@v4
 
@@ -83,6 +95,18 @@ jobs:
     name: Integration tests
     runs-on: ubuntu-latest
     environment: development
+    env:
+      ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+      DEBUG: ${{ vars.DEBUG }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+      POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+      QDRANT_SERVICE_API_KEY: ${{ secrets.QDRANT_SERVICE_API_KEY }}
+      QDRANT_SERVICE_READ_ONLY_API_KEY: ${{ secrets.QDRANT_SERVICE_READ_ONLY_API_KEY }}
+      QDRANT_SERVICE_HTTP_PORT: ${{ vars.QDRANT_SERVICE_HTTP_PORT }}
+      QDRANT_SERVICE_GRPC_PORT: ${{ vars.QDRANT_SERVICE_GRPC_PORT }}
 
     services:
       postgres:
