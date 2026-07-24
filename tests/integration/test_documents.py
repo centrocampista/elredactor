@@ -30,7 +30,7 @@ FAKE_MAX_FILE_SIZE = 100
 @pytest.mark.integration
 def test_upload_document(
     tmp_path,
-    test_client,
+    client_fastapi,
     sample_pdf,
     sample_txt,
     sample_md,
@@ -48,7 +48,7 @@ def test_upload_document(
         file_content = sample_docx
 
     with patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path):
-        response = test_client.post(
+        response = client_fastapi.post(
             "/v1/documents/upload",
             files={
                 "file": (
@@ -72,10 +72,10 @@ def test_upload_document(
 
 
 @pytest.mark.integration
-def test_upload_invalid_document(tmp_path, test_client):
+def test_upload_invalid_document(tmp_path, client_fastapi):
 
     with patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path):
-        response = test_client.post(
+        response = client_fastapi.post(
             "v1/documents/upload",
             files={"file": ("test.mp3", b"audio content", "audio/mp3")},
         )
@@ -84,10 +84,10 @@ def test_upload_invalid_document(tmp_path, test_client):
 
 
 @pytest.mark.integration
-def test_upload_too_large_document(tmp_path, test_client):
+def test_upload_too_large_document(tmp_path, client_fastapi):
     with patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path):
         with patch("app.api.v1.routers.documents.MAX_FILE_SIZE", FAKE_MAX_FILE_SIZE):
-            response = test_client.post(
+            response = client_fastapi.post(
                 "v1/documents/upload",
                 files={
                     "file": (
@@ -102,16 +102,16 @@ def test_upload_too_large_document(tmp_path, test_client):
 
 
 @pytest.mark.integration
-def test_upload_without_file(test_client):
-    response = test_client.post("v1/documents/upload")
+def test_upload_without_file(client_fastapi):
+    response = client_fastapi.post("v1/documents/upload")
     assert response.status_code == 422
 
 
 @pytest.mark.integration
-def test_upload_documment_to_missing_dir(tmp_path, test_client, sample_pdf):
+def test_upload_documment_to_missing_dir(tmp_path, client_fastapi, sample_pdf):
     missing_dir = tmp_path / "missing_dir"
     with patch("app.api.v1.routers.documents.UPLOAD_DIR", missing_dir):
-        response = test_client.post(
+        response = client_fastapi.post(
             "v1/documents/upload",
             files={"file": ("test.pdf", sample_pdf, "application/pdf")},
         )
