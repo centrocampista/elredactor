@@ -13,12 +13,22 @@ services:
       - postgres_red_data:/var/lib/postgresql/data
 
 
+  langgraph:
+    env_file:
+      - .env
+    depends_on:
+      - postgres_red
+      - qdrant
+    expose:
+      - "2024"
+
   elredactor:
     env_file:
       - .env
     depends_on:
       - postgres_red
       - qdrant
+      - langgraph
 
   qdrant:
     image: qdrant/qdrant:v1.13.6
