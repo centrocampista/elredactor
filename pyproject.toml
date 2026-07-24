@@ -31,6 +31,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-playwright>=0.8.0",
     "ruff>=0.15.20",
+    "types-passlib>=1.7.7.20260211",
 ]
 
 [tool.pytest.ini_options]
