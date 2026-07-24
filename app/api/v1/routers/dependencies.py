@@ -9,7 +9,7 @@ async def get_current_credential(
     api_key: str = Header(..., alias="X-Api-Key"),
     api_secret: str = Header(..., alias="X-Api-Secret"),
     session: AsyncSession = Depends(get_db),
-) -> ApiCredential | None:
+) -> ApiCredential:
 
     credential = await verify_api_credential(session, api_key, api_secret)
     if credential is None:
