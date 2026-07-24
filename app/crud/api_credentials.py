@@ -1,7 +1,7 @@
 from passlib.hash import bcrypt
 from sqlalchemy import select
 
-from app.domain import ApiCredentialResponse
+from app.domain.api_credentials import ApiCredentialResponse
 from app.models.api_credentials import ApiCredential
 from sqlalchemy.ext.asyncio import AsyncSession
 import secrets
@@ -40,5 +40,9 @@ async def create_api_credential(
     await db_session.refresh(credential)
 
     return ApiCredentialResponse(
-        user_id=user.id, key=key, secret=secret, credential_id=credential.id
+        user_id=user.id,
+        email=email,
+        key=key,
+        secret=secret,
+        credential_id=credential.id,
     )
