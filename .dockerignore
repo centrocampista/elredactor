@@ -38,3 +38,6 @@ client/
 
 #Local data
 .data/
+
+# Langgraph api folder
+.langgraph_api/
