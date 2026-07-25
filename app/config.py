@@ -22,7 +22,18 @@ class Settings(BaseSettings):
             f"{self.postgres_db}"
         )
 
-    groq_api_key: str = ""
+    groq_api_key: str
+
+    openrouter_api_key: str
+    openrouter_base_url: str
+    openrouter_model: str
+
+    langgraph_url: str = "http://langgraph:2024"
+
+    langsmith_tracing: bool = False
+    langsmith_endpoint: str = ""
+    langsmith_api_key: str = ""
+    langsmith_project: str = ""
 
     qdrant_service_host: str = "qdrant"
     qdrant_service_http_port: str
