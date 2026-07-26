@@ -16,4 +16,4 @@ class Document(Base, TimestampMixin):
     filename: Mapped[str] = mapped_column(String, nullable=False)
     extension: Mapped[str] = mapped_column(String, nullable=False)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
-    status: Mapped[str] = mapped_column(String, nullable=False)
+    doc_status: Mapped[str] = mapped_column(String, nullable=False)

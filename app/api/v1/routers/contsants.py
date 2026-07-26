@@ -1,5 +1,6 @@
 from pathlib import Path
 from app.config import settings
+from enum import StrEnum
 
 UPLOAD_DIR = Path(settings.upload_dir_name)
 MAX_FILE_SIZE = 50 * 1024 * 1024
@@ -9,3 +10,10 @@ ALLOWED_TYPES = {
     "text/markdown": ".md",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
 }
+
+
+class DocumentStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    DONE = "done"
+    FAILED = "failed"
