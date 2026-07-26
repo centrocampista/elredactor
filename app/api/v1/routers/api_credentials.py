@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.v1.routers.dependencies import get_current_credential
 from app.crud.api_credentials import create_api_credential
 from app.db.session import get_db
 from app.schemas.api_credentials import ApiCredentialCreate, ApiCredentialSchema
@@ -10,7 +9,6 @@ from dataclasses import asdict
 router = APIRouter(
     prefix="/api-creds",
     tags=["api-creds"],
-    dependencies=[Depends(get_current_credential)],
 )
 
 

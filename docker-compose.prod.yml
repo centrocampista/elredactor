@@ -1,4 +1,13 @@
 services:
+  langgraph:
+    build:
+      context: .
+      target: prod
+    expose:
+      - "2024"
+    restart: always
+    command: uv run langgraph serve --host 0.0.0.0 --port 2024
+
   elredactor:
     build:
       context: .

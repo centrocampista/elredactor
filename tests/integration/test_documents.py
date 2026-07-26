@@ -28,9 +28,9 @@ FAKE_MAX_FILE_SIZE = 100
     ],
 )
 @pytest.mark.integration
-def test_upload_document(
+async def test_upload_document(
     tmp_path,
-    client_fastapi,
+    client_httpx,
     sample_pdf,
     sample_txt,
     sample_md,
@@ -48,7 +48,7 @@ def test_upload_document(
         file_content = sample_docx
 
     with patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path):
-        response = client_fastapi.post(
+        response = await client_httpx.post(
             "/v1/documents/upload",
             files={
                 "file": (
@@ -63,19 +63,19 @@ def test_upload_document(
     body = response.json()
     assert body["filename"] == file_configuration["filename"]
     assert body["extension"] == file_configuration["extension"]
-    assert body["status"] == "pending"
-    assert uuid.UUID(body["document_id"])
-    saved_file = tmp_path / f"{body['document_id']}{body['extension']}"
+    assert body["doc_status"] == "pending"
+    assert uuid.UUID(body["id"])
+    saved_file = tmp_path / f"{body['id']}{body['extension']}"
 
     assert saved_file.exists()
     assert saved_file.read_bytes() == file_content
 
 
 @pytest.mark.integration
-def test_upload_invalid_document(tmp_path, client_fastapi):
+async def test_upload_invalid_document(tmp_path, client_httpx):
 
     with patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path):
-        response = client_fastapi.post(
+        response = await client_httpx.post(
             "v1/documents/upload",
             files={"file": ("test.mp3", b"audio content", "audio/mp3")},
         )
@@ -84,10 +84,10 @@ def test_upload_invalid_document(tmp_path, client_fastapi):
 
 
 @pytest.mark.integration
-def test_upload_too_large_document(tmp_path, client_fastapi):
+async def test_upload_too_large_document(tmp_path, client_httpx):
     with patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path):
         with patch("app.api.v1.routers.documents.MAX_FILE_SIZE", FAKE_MAX_FILE_SIZE):
-            response = client_fastapi.post(
+            response = await client_httpx.post(
                 "v1/documents/upload",
                 files={
                     "file": (
@@ -102,16 +102,16 @@ def test_upload_too_large_document(tmp_path, client_fastapi):
 
 
 @pytest.mark.integration
-def test_upload_without_file(client_fastapi):
-    response = client_fastapi.post("v1/documents/upload")
+async def test_upload_without_file(client_httpx):
+    response = await client_httpx.post("v1/documents/upload")
     assert response.status_code == 422
 
 
 @pytest.mark.integration
-def test_upload_documment_to_missing_dir(tmp_path, client_fastapi, sample_pdf):
+async def test_upload_documment_to_missing_dir(tmp_path, client_httpx, sample_pdf):
     missing_dir = tmp_path / "missing_dir"
     with patch("app.api.v1.routers.documents.UPLOAD_DIR", missing_dir):
-        response = client_fastapi.post(
+        response = await client_httpx.post(
             "v1/documents/upload",
             files={"file": ("test.pdf", sample_pdf, "application/pdf")},
         )
@@ -119,5 +119,5 @@ def test_upload_documment_to_missing_dir(tmp_path, client_fastapi, sample_pdf):
     assert response.status_code == 201
     assert missing_dir.exists()
     body = response.json()
-    saved_file = missing_dir / f"{body['document_id']}{body['extension']}"
+    saved_file = missing_dir / f"{body['id']}{body['extension']}"
     assert saved_file.exists()

@@ -1,8 +1,20 @@
 import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 
-from app.api.v1.routers.contsants import ALLOWED_TYPES, MAX_FILE_SIZE, UPLOAD_DIR
+from app.api.v1.routers.contsants import (
+    ALLOWED_TYPES,
+    MAX_FILE_SIZE,
+    UPLOAD_DIR,
+    DocumentStatus,
+)
 from app.api.v1.routers.dependencies import get_current_credential
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.crud.documents import create_document
+from app.db.session import get_db
+from app.domain.documents import DocumentData
+from app.models.api_credentials import ApiCredential
+from app.schemas.documents import DocumentUploadResponse
 
 
 class UploadValidator:
@@ -30,10 +42,17 @@ router = APIRouter(
 
 
 @router.post("/upload", status_code=201)
-async def upload_document(validator: UploadValidator = Depends()):
+async def upload_document(
+    validator: UploadValidator = Depends(),
+    session: AsyncSession = Depends(get_db),
+    current_credential: ApiCredential = Depends(get_current_credential),
+) -> DocumentUploadResponse:
+
     contents = await validator.validate()
-    document_id = str(uuid.uuid4())
+    document_id = uuid.uuid4()
     filename = validator.file.filename
+    if filename is None:
+        raise HTTPException(status_code=422, detail="Filename is required.")
     content_type = validator.file.content_type or ""
     extension = ALLOWED_TYPES[content_type]
 
@@ -42,9 +61,21 @@ async def upload_document(validator: UploadValidator = Depends()):
 
     file_path.write_bytes(contents)
 
-    return {
-        "document_id": document_id,
-        "filename": filename,
-        "extension": extension,
-        "status": "pending",
-    }
+    result = await create_document(
+        session,
+        DocumentData(
+            id=document_id,
+            user_id=current_credential.user_id,
+            filename=filename,
+            extension=extension,
+            file_path=str(file_path),
+            doc_status=DocumentStatus.PENDING,
+        ),
+    )
+
+    return DocumentUploadResponse(
+        id=result.id,
+        filename=result.filename,
+        extension=result.extension,
+        doc_status=result.doc_status,
+    )
