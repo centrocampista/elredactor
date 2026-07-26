@@ -9,7 +9,7 @@ from app.schemas.users import UserCreate, UserResponse, UserUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
-    prefix="/users", tags=["user"], dependencies=[Depends(get_current_credential)]
+    prefix="/users", tags=["user"]
 )
 
 
@@ -24,7 +24,7 @@ async def create_new_user(
     return UserResponse.model_validate(user)
 
 
-@router.patch("")
+@router.patch("", dependencies=[Depends(get_current_credential)])
 async def update_existing_user(
     user_update: UserUpdate, session: AsyncSession = Depends(get_db)
 ) -> UserResponse:

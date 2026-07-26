@@ -6,7 +6,7 @@ services:
     expose:
       - "2024"
     restart: always
-    command: langgraph serve --host 0.0.0.0 --port 2024
+    command: uv run langgraph serve --host 0.0.0.0 --port 2024
 
   elredactor:
     build:

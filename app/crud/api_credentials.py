@@ -1,4 +1,4 @@
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import select
 
 from app.domain.api_credentials import ApiCredentialResponse
@@ -17,7 +17,7 @@ async def verify_api_credential(
     credential = result.scalar_one_or_none()
     if credential is None:
         return None
-    if not bcrypt.verify(api_secret, credential.secret_hash):
+    if not bcrypt.checkpw(api_secret.encode(), credential.secret_hash.encode()):
         return None
     return credential
 
@@ -32,7 +32,7 @@ async def create_api_credential(
 
     key = secrets.token_urlsafe(32)
     secret = secrets.token_urlsafe(32)
-    secret_hash = bcrypt.hash(secret)
+    secret_hash = bcrypt.hashpw(secret.encode(), bcrypt.gensalt()).decode()
 
     credential = ApiCredential(user_id=user.id, key=key, secret_hash=secret_hash)
     db_session.add(credential)

@@ -41,3 +41,6 @@ client/
 
 # Langgraph api folder
 .langgraph_api/
+
+# Ignore uploaded content
+content/pipeline/raw

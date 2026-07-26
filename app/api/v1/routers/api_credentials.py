@@ -10,7 +10,6 @@ from dataclasses import asdict
 router = APIRouter(
     prefix="/api-creds",
     tags=["api-creds"],
-    dependencies=[Depends(get_current_credential)],
 )
 
 

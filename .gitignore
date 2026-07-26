@@ -222,3 +222,6 @@ __marimo__/
 
 # Langgraph api folder
 .langgraph_api/
+
+# Ignore uploaded content
+content/pipeline/raw
