@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from httpx import AsyncClient, ASGITransport
 
 from app.models.api_credentials import ApiCredential
+from app.models.users import User
 
 test_engine = create_async_engine(
     settings.database_url,
@@ -41,16 +42,28 @@ async def db_session():
         await connection.rollback()
 
 
-async def override_get_current_credential() -> ApiCredential:
-    return ApiCredential(
-        id=uuid.uuid4(), user_id=uuid.uuid4(), key="test-key", secret_hash="x"
+@pytest.fixture(scope="function")
+async def db_user(db_session) -> User:
+    user = User(
+        id=uuid.uuid4(),
+        first_name="Test",
+        last_name="User",
+        email=f"test-{uuid.uuid4()}@example.com",
     )
+    db_session.add(user)
+    await db_session.flush()
+    return user
 
 
 @pytest.fixture(scope="function")
-def client_fastapi(db_session):
+def client_fastapi(db_session, db_user):
     async def override_get_db():
         yield db_session
+
+    async def override_get_current_credential() -> ApiCredential:
+        return ApiCredential(
+            id=uuid.uuid4(), user_id=db_user.id, key="test-key", secret_hash="x"
+        )
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_credential] = override_get_current_credential
@@ -59,9 +72,14 @@ def client_fastapi(db_session):
 
 
 @pytest.fixture(scope="function")
-async def client_httpx(db_session):
+async def client_httpx(db_session, db_user):
     async def override_get_db():
         yield db_session
+
+    async def override_get_current_credential() -> ApiCredential:
+        return ApiCredential(
+            id=uuid.uuid4(), user_id=db_user.id, key="test-key", secret_hash="x"
+        )
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_credential] = override_get_current_credential
