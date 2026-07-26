@@ -24,19 +24,19 @@ class Settings(BaseSettings):
             f"{self.postgres_db}"
         )
 
-    groq_api_key: str
+    groq_api_key: str = ""
 
-    openrouter_api_key: str
-    openrouter_base_url: str
-    openrouter_model: str
-    openrouter_embedding_model: str
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "anthropic/claude-haiku-4.5"
+    openrouter_embedding_model: str = "openai/text-embedding-3-small"
 
     langgraph_url: str = "http://langgraph:2024"
 
     langsmith_tracing: bool = False
-    langsmith_endpoint: str
+    langsmith_endpoint: str = "https://eu.api.smith.langchain.com"
     langsmith_api_key: str = ""
-    langsmith_project: str
+    langsmith_project: str = "elredactor"
 
     qdrant_service_host: str = "qdrant"
     qdrant_service_http_port: str
