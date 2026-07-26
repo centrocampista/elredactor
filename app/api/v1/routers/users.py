@@ -8,9 +8,7 @@ from app.db.session import get_db
 from app.schemas.users import UserCreate, UserResponse, UserUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(
-    prefix="/users", tags=["user"]
-)
+router = APIRouter(prefix="/users", tags=["user"])
 
 
 @router.post("", status_code=201)

@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    upload_dir_name: str = "/content/pipeline/raw"
+
     postgres_user: str
     postgres_password: str
     postgres_db: str
@@ -28,7 +30,7 @@ class Settings(BaseSettings):
     openrouter_base_url: str
     openrouter_model: str
     openrouter_embedding_model: str
-    
+
     langgraph_url: str = "http://langgraph:2024"
 
     langsmith_tracing: bool = False
