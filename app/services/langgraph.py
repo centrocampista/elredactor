@@ -19,7 +19,7 @@ async def trigger_ingest(document_data: DocumentData) -> str:
         run_response = await client.post(
             f"{settings.langgraph_url}/threads/{thread_id}/runs",
             json={
-                "assistant_id": "researcher",
+                "assistant_id": "ingest",
                 "input": {"document": asdict(document_data)},
             },
         )

@@ -8,7 +8,7 @@ def _make_client(api_key: str) -> AsyncQdrantClient:
         port=int(settings.qdrant_service_http_port),
         grpc_port=int(settings.qdrant_service_grpc_port),
         prefer_grpc=settings.qdrant_service_prefer_grpc,
-        https=not settings.is_dev,
+        https=False,
         api_key=api_key,
     )
 
