@@ -15,6 +15,7 @@ from app.db.session import get_db
 from app.domain.documents import DocumentData
 from app.models.api_credentials import ApiCredential
 from app.schemas.documents import DocumentUploadResponse
+from app.services.langgraph import trigger_ingest
 
 
 class UploadValidator:
@@ -58,24 +59,26 @@ async def upload_document(
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     file_path = UPLOAD_DIR / f"{document_id}{extension}"
-
     file_path.write_bytes(contents)
 
-    result = await create_document(
-        session,
-        DocumentData(
-            id=document_id,
-            user_id=current_credential.user_id,
-            filename=filename,
-            extension=extension,
-            file_path=str(file_path),
-            doc_status=DocumentStatus.PENDING,
-        ),
+    data = DocumentData(
+        id=document_id,
+        user_id=current_credential.user_id,
+        filename=filename,
+        extension=extension,
+        file_path=str(file_path),
+        doc_status=DocumentStatus.PENDING,
     )
 
+    thread_id = await trigger_ingest(data)
+    data.langgraph_thread_id = thread_id
+
+    doc = await create_document(session, data)
+
     return DocumentUploadResponse(
-        id=result.id,
-        filename=result.filename,
-        extension=result.extension,
-        doc_status=result.doc_status,
+        id=doc.id,
+        filename=doc.filename,
+        extension=doc.extension,
+        doc_status=doc.doc_status,
+        langgraph_thread_id=doc.langgraph_thread_id,
     )

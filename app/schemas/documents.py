@@ -10,3 +10,4 @@ class DocumentUploadResponse(BaseModel):
     filename: str
     extension: str
     doc_status: DocumentStatus
+    langgraph_thread_id: str | None = None

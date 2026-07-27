@@ -12,3 +12,4 @@ class DocumentData:
     extension: str
     file_path: str
     doc_status: DocumentStatus
+    langgraph_thread_id: str | None = None
