@@ -14,10 +14,13 @@ def _to_json_safe(data: dict) -> dict:
 
 async def trigger_ingest(document_data: DocumentData) -> str:
     async with httpx.AsyncClient(timeout=5.0) as client:
-        thread_response = await client.post(f"{settings.langgraph_url}/threads", json={})
+        thread_response = await client.post(
+            f"{settings.langgraph_url}/threads", json={}
+        )
         if not thread_response.is_success:
             raise HTTPException(
-                status_code=502, detail=f"Failed to create LangGraph thread: {thread_response.status_code}"
+                status_code=502,
+                detail=f"Failed to create LangGraph thread: {thread_response.status_code}",
             )
         thread_id: str = thread_response.json()["thread_id"]
 
@@ -30,7 +33,8 @@ async def trigger_ingest(document_data: DocumentData) -> str:
         )
         if not run_response.is_success:
             raise HTTPException(
-                status_code=502, detail=f"Failed to start LangGraph ingest run: {run_response.status_code}"
+                status_code=502,
+                detail=f"Failed to start LangGraph ingest run: {run_response.status_code}",
             )
 
     return thread_id
