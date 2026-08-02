@@ -47,7 +47,12 @@ async def test_upload_document(
     elif file_configuration["extension"] == ".docx":
         file_content = sample_docx
 
-    with patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path):
+    with (
+        patch("app.api.v1.routers.documents.UPLOAD_DIR", tmp_path),
+        patch(
+            "app.api.v1.routers.documents.trigger_ingest", return_value="fake-thread-id"
+        ),
+    ):
         response = await client_httpx.post(
             "/v1/documents/upload",
             files={
@@ -110,7 +115,12 @@ async def test_upload_without_file(client_httpx):
 @pytest.mark.integration
 async def test_upload_documment_to_missing_dir(tmp_path, client_httpx, sample_pdf):
     missing_dir = tmp_path / "missing_dir"
-    with patch("app.api.v1.routers.documents.UPLOAD_DIR", missing_dir):
+    with (
+        patch("app.api.v1.routers.documents.UPLOAD_DIR", missing_dir),
+        patch(
+            "app.api.v1.routers.documents.trigger_ingest", return_value="fake-thread-id"
+        ),
+    ):
         response = await client_httpx.post(
             "v1/documents/upload",
             files={"file": ("test.pdf", sample_pdf, "application/pdf")},

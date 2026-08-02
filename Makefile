@@ -34,6 +34,7 @@ help:
 	@echo "  migrate-new      Create new migration (name=)"
 	@echo "  migrate-history  Show history"
 	@echo "  db-shell         psql in container"
+	@echo "  qdrant-migrate   Apply Qdrant collection migrations"
 	@echo ""
 	@echo "Production:"
 	@echo "  prod             Start production"
@@ -119,6 +120,9 @@ migrate-history:
 db-shell:
 	$(COMPOSE_DEV) exec postgres_red psql -U $${POSTGRES_USER} -d $${POSTGRES_DB}
 
+qdrant-migrate:
+	$(COMPOSE_DEV) exec $(APP) uv run python -m migrations.qdrant.runner
+
 # ============================================================
 # Production
 # ============================================================
@@ -150,6 +154,6 @@ prune:
 .PHONY: dev dev-d down logs logs-db shell \
         test test-unit test-integration test-e2e test-cov \
         lint format lint-fix \
-        migrate migrate-down migrate-new migrate-history db-shell \
+        migrate migrate-down migrate-new migrate-history db-shell qdrant-migrate \
         prod prod-down prod-logs \
         ps build rebuild prune help

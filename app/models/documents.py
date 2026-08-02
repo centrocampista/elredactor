@@ -17,3 +17,4 @@ class Document(Base, TimestampMixin):
     extension: Mapped[str] = mapped_column(String, nullable=False)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
     doc_status: Mapped[str] = mapped_column(String, nullable=False)
+    langgraph_thread_id: Mapped[str | None] = mapped_column(String, nullable=True)
